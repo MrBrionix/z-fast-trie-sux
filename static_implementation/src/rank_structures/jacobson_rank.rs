@@ -1,9 +1,8 @@
 use crate::traits::*;
 use crate::utils::str::*;
 use bitvec::field::BitField;
+use std::cmp::min;
 use succinct::int_vec::IntVector;
-
-const WORD_SIZE: usize = 63;
 
 pub struct JacobsonRank {
     n: usize,
@@ -61,9 +60,6 @@ impl RankStructure for JacobsonRank {
         }
         t.push(curr_t);
         tmp.push(0);
-        while tmp.len() % WORD_SIZE != 0 {
-            tmp.push(0);
-        }
 
         self.n_bits = (self.n as f64).log2().ceil() as usize;
         self.super_block_ranks = IntVector::with_capacity(self.n_bits, self.super_block_num as u64);
@@ -117,6 +113,6 @@ impl JacobsonRank {
         ranklist
     }
     fn get_index(l: usize, r: usize, v0: &Str, v1: &Str) -> usize {
-        v0[l..r].load::<usize>() | v1[l..r].load::<usize>()
+        v0[l..min(r, v0.len())].load::<usize>() | v1[l..min(r, v0.len())].load::<usize>()
     }
 }

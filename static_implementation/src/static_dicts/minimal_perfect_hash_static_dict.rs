@@ -5,7 +5,7 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 
-type RankDS = NaiveRank; //JacobsonRank;
+type RankDS = JacobsonRank;
 const GAMMA: f64 = 1.23;
 
 pub struct MinimalPerfectHashStaticDict<K, V, H: ParametricHash<DomainType = K>> {
