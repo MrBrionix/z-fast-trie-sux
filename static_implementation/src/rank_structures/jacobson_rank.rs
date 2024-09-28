@@ -1,6 +1,6 @@
+use bitvec::field::BitField;
 use crate::traits::*;
 use crate::utils::str::*;
-use bitvec::field::BitField;
 use std::cmp::min;
 use sux::prelude::*;
 
@@ -29,8 +29,8 @@ impl RankStructure for JacobsonRank {
             block_bits: 0,
             super_block_bits: 0,
             n_bits: 0,
-            block_ranks: BitFieldVec::<usize>::new(1,0),
-            super_block_ranks: BitFieldVec::<usize>::new(1,0),
+            block_ranks: BitFieldVec::<usize>::new(1, 0),
+            super_block_ranks: BitFieldVec::<usize>::new(1, 0),
             partial_ranks: vec![],
         }
     }
@@ -62,9 +62,15 @@ impl RankStructure for JacobsonRank {
         tmp.push(0);
 
         self.n_bits = (self.n as f64).log2().ceil() as usize;
-        self.super_block_ranks = BitFieldVec::<usize>::with_capacity(self.n_bits, self.super_block_num);
+        self.super_block_ranks = BitFieldVec::<usize>::with_capacity(
+            self.n_bits,
+            self.super_block_num
+        );
         self.super_block_bits = (self.super_block_dim as f64).log2().ceil() as usize;
-        self.block_ranks = BitFieldVec::<usize>::with_capacity(self.super_block_bits, self.block_num);
+        self.block_ranks = BitFieldVec::<usize>::with_capacity(
+            self.super_block_bits,
+            self.block_num
+        );
         self.block_bits = (self.block_dim as f64).log2().ceil() as usize;
 
         for i in 0..self.super_block_num {
@@ -73,9 +79,7 @@ impl RankStructure for JacobsonRank {
         for i in 0..self.block_num {
             self.block_ranks.push(
                 t[i * self.block_dim] -
-                    self.super_block_ranks.get(
-                        (i * self.block_dim) / self.super_block_dim
-                    )
+                    self.super_block_ranks.get((i * self.block_dim) / self.super_block_dim)
             );
         }
         for i in 0..1 << self.block_dim {
@@ -99,7 +103,7 @@ impl RankStructure for JacobsonRank {
 
 impl JacobsonRank {
     fn compute_ranklist(mut x: usize, size: usize, k: usize) -> BitFieldVec<usize> {
-        let mut ranklist = BitFieldVec::<usize>::with_capacity(k,size);
+        let mut ranklist = BitFieldVec::<usize>::with_capacity(k, size);
         let mut curr_t = 0;
         for _ in 0..size {
             ranklist.push(curr_t);

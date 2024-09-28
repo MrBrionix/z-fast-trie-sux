@@ -1,5 +1,5 @@
-use crate::traits::*;
 use crate::static_dicts::minimal_perfect_hash_static_dict::MinimalPerfectHashStaticDict;
+use crate::traits::*;
 use crate::utils::*;
 use std::cmp::min;
 
@@ -12,12 +12,12 @@ trait TrieNode {
     fn is_leaf(&self) -> bool;
     fn get_prev(&self) -> &Option<Ptr<LeafTrieNode>>;
     fn get_next(&self) -> &Option<Ptr<LeafTrieNode>>;
-    fn get_left(&self) -> &Option<Ptr<dyn TrieNode>>;
-    fn get_right(&self) -> &Option<Ptr<dyn TrieNode>>;
+    fn get_left(&self) -> Option<&Ptr<dyn TrieNode>>;
+    fn get_right(&self) -> Option<&Ptr<dyn TrieNode>>;
     fn get_leftmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode>;
     fn get_rightmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode>;
-    fn get_jump_left(&self) -> &Option<Ptr<dyn TrieNode>>;
-    fn get_jump_right(&self) -> &Option<Ptr<dyn TrieNode>>;
+    fn get_jump_left(&self) -> Option<&Ptr<dyn TrieNode>>;
+    fn get_jump_right(&self) -> Option<&Ptr<dyn TrieNode>>;
     fn set_lind(&mut self, x: usize);
     fn get_lind(&self) -> usize;
     fn get_rind(&self) -> usize;
@@ -36,12 +36,12 @@ trait TrieNode {
 }
 
 struct InternalTrieNode {
-    left: Option<Ptr<dyn TrieNode>>,
-    right: Option<Ptr<dyn TrieNode>>,
+    left: Ptr<dyn TrieNode>,
+    right: Ptr<dyn TrieNode>,
     lind: usize,
-    jump_left: Option<Ptr<dyn TrieNode>>,
-    jump_right: Option<Ptr<dyn TrieNode>>,
-    to_leaf: Option<Ptr<LeafTrieNode>>,
+    jump_left: Ptr<dyn TrieNode>,
+    jump_right: Ptr<dyn TrieNode>,
+    to_leaf: Ptr<LeafTrieNode>,
 }
 
 struct LeafTrieNode {
@@ -49,7 +49,7 @@ struct LeafTrieNode {
     prev: Option<Ptr<LeafTrieNode>>,
     next: Option<Ptr<LeafTrieNode>>,
     to_internal: Option<Ptr<InternalTrieNode>>,
-    extent: Option<Str>,
+    extent: Str,
 }
 
 impl<H: Hash<DomainType = Str> + ParametricHash> Trie for ZFastTrieSux<H> {
@@ -109,7 +109,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                 prev: last_leaf_ref.clone(),
                 next: None,
                 to_internal: None,
-                extent: Some(v[l].clone()),
+                extent: v[l].clone(),
             });
 
             let leafp = copy_ptr(&leaf);
@@ -129,18 +129,18 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                 let (l, pl) = ZFastTrieSux::<H>::build_tree(v, ind + 1, l, mid, last_leaf_ref);
                 let (r, pr) = ZFastTrieSux::<H>::build_tree(v, ind + 1, mid, r, last_leaf_ref);
 
+                let tmpl = l.clone();
+                let tmpr = r.clone();
                 let res = new_ptr(InternalTrieNode {
-                    left: l,
-                    right: r,
+                    left: l.expect("left child in ZFastTrieSux build"),
+                    right: r.expect("right child in ZFastTrieSux build"),
                     lind: ind,
-                    jump_left: None,
-                    jump_right: None,
-                    to_leaf: pl,
+                    jump_left: tmpl.expect("left jump in ZFastTrieSux build"),
+                    jump_right: tmpr.expect("right jump in ZFastTrieSux build"),
+                    to_leaf: pl.expect("to leaf pointer in ZFastTrieSux build"),
                 });
 
-                if let Some(p) = &res.borrow().to_leaf {
-                    p.borrow_mut().to_internal = Some(copy_ptr(&res));
-                }
+                res.borrow().to_leaf.borrow_mut().to_internal = Some(copy_ptr(&res));
 
                 (Some(res), pr)
             } else {
@@ -339,7 +339,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             if *x <= alpha.borrow().get_extent() {
                 while !alpha.borrow().is_leaf() {
                     if alpha.borrow().get_extent().len() < y.len() {
-                        let tmp = alpha.borrow().get_jump_left().clone().unwrap();
+                        let tmp = alpha.borrow().get_jump_left().clone().unwrap().clone();
                         alpha = tmp;
                     } else {
                         break;
@@ -352,7 +352,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             if *x > beta.borrow().get_extent() {
                 while !beta.borrow().is_leaf() {
                     if beta.borrow().get_extent().len() < x.len() {
-                        let tmp = beta.borrow().get_jump_right().clone().unwrap();
+                        let tmp = beta.borrow().get_jump_right().clone().unwrap().clone();
                         beta = tmp;
                     } else {
                         break;
@@ -367,7 +367,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             alpha = copy_ptr(&eta.borrow().get_left().as_ref().unwrap());
             while !alpha.borrow().is_leaf() {
                 if alpha.borrow().get_extent().len() < x.len() {
-                    let tmp = alpha.borrow().get_jump_right().clone().unwrap();
+                    let tmp = alpha.borrow().get_jump_right().clone().unwrap().clone();
                     alpha = tmp;
                 } else {
                     break;
@@ -380,7 +380,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             beta = copy_ptr(&eta.borrow().get_right().as_ref().unwrap());
             while !beta.borrow().is_leaf() {
                 if beta.borrow().get_extent().len() < y.len() {
-                    let tmp = beta.borrow().get_jump_left().clone().unwrap();
+                    let tmp = beta.borrow().get_jump_left().clone().unwrap().clone();
                     beta = tmp;
                 } else {
                     break;
@@ -408,36 +408,28 @@ impl TrieNode for InternalTrieNode {
         &None
     }
 
-    fn get_left(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &self.left
+    fn get_left(&self) -> Option<&Ptr<dyn TrieNode>> {
+        Some(&self.left)
     }
 
-    fn get_right(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &self.right
+    fn get_right(&self) -> Option<&Ptr<dyn TrieNode>> {
+        Some(&self.right)
     }
 
     fn get_leftmost(&self, _noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
-        self.jump_left
-            .as_ref()
-            .unwrap()
-            .borrow()
-            .get_leftmost(self.jump_left.as_ref().unwrap().clone())
+        self.jump_left.as_ref().borrow().get_leftmost(self.jump_left.clone())
     }
 
     fn get_rightmost(&self, _noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
-        self.jump_right
-            .as_ref()
-            .unwrap()
-            .borrow()
-            .get_rightmost(self.jump_right.as_ref().unwrap().clone())
+        self.jump_right.as_ref().borrow().get_rightmost(self.jump_right.clone())
     }
 
-    fn get_jump_left(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &self.jump_left
+    fn get_jump_left(&self) -> Option<&Ptr<dyn TrieNode>> {
+        Some(&self.jump_left)
     }
 
-    fn get_jump_right(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &self.jump_right
+    fn get_jump_right(&self) -> Option<&Ptr<dyn TrieNode>> {
+        Some(&self.jump_right)
     }
 
     fn set_lind(&mut self, x: usize) {
@@ -449,23 +441,20 @@ impl TrieNode for InternalTrieNode {
     }
 
     fn get_rind(&self) -> usize {
-        assert!(self.left.is_some());
-        self.left.as_ref().unwrap().borrow().get_lind() - 1
+        self.left.borrow().get_lind() - 1
     }
 
     fn get_extent(&self) -> Str {
         let rind = self.get_rind();
-        assert!(self.to_leaf.is_some());
-        let p = self.to_leaf.as_ref().unwrap();
-        assert!(p.borrow().extent.is_some());
-        p.borrow().extent.as_ref().unwrap()[0..rind].to_bitvec()
+
+        let p = &self.to_leaf;
+        p.borrow().extent[0..rind].to_bitvec()
     }
 
     fn get_prefix_extent(&self, x: usize) -> Str {
         let rind = min(self.get_rind(), x);
 
-        assert!(self.to_leaf.is_some());
-        let p = self.to_leaf.as_ref().unwrap();
+        let p = &self.to_leaf;
         p.borrow().get_prefix_extent(rind)
     }
 
@@ -474,8 +463,7 @@ impl TrieNode for InternalTrieNode {
         if k >= self.lind && k <= rind {
             noderef
         } else {
-            assert!(self.left.is_some());
-            let x = self.left.as_ref().unwrap();
+            let x = &self.left;
             x.borrow().get_kth_left(copy_ptr(&x), k)
         }
     }
@@ -485,43 +473,35 @@ impl TrieNode for InternalTrieNode {
         if k >= self.lind && k <= rind {
             noderef
         } else {
-            assert!(self.right.is_some());
-            let x = self.right.as_ref().unwrap();
+            let x = &self.right;
             x.borrow().get_kth_right(copy_ptr(&x), k)
         }
     }
 
     fn precalc_jumps(&mut self, noderef: Ptr<dyn TrieNode>) {
         let k = get_fattest(self.get_rind(), self.lind);
-        if let Some(x) = &self.left {
-            self.jump_left = Some(
-                self.get_kth_left(noderef.clone(), if k == 0 {
-                    usize::MAX
-                } else {
-                    k + (1 << k.trailing_zeros())
-                })
-            );
-            x.borrow_mut().precalc_jumps(copy_ptr(&x));
-        }
 
-        if let Some(x) = &self.right {
-            self.jump_right = Some(
-                self.get_kth_right(noderef, if k == 0 {
-                    usize::MAX
-                } else {
-                    k + (1 << k.trailing_zeros())
-                })
-            );
-            x.borrow_mut().precalc_jumps(copy_ptr(&x));
-        }
+        self.jump_left = self.get_kth_left(noderef.clone(), if k == 0 {
+            usize::MAX
+        } else {
+            k + (1 << k.trailing_zeros())
+        });
+
+        self.left.borrow_mut().precalc_jumps(copy_ptr(&self.left));
+
+        self.jump_right = self.get_kth_right(noderef, if k == 0 {
+            usize::MAX
+        } else {
+            k + (1 << k.trailing_zeros())
+        });
+        self.right.borrow_mut().precalc_jumps(copy_ptr(&self.right));
     }
 
     fn get_handle(&self) -> Option<Str> {
         let rind = self.get_rind();
-        assert!(self.to_leaf.is_some());
-        let p = self.to_leaf.as_ref().unwrap();
-        assert!(p.borrow().extent.is_some());
-        Some(p.borrow().extent.as_ref().unwrap()[0..get_fattest(rind, self.lind)].to_bitvec())
+
+        let p = &self.to_leaf;
+        Some(p.borrow().extent[0..get_fattest(rind, self.lind)].to_bitvec())
     }
 
     fn precalc_z_map(
@@ -535,12 +515,8 @@ impl TrieNode for InternalTrieNode {
         keys.push(s.unwrap());
         values.push(r);
 
-        if let Some(x) = &self.left {
-            x.borrow().precalc_z_map(keys, values, copy_ptr(&x));
-        }
-        if let Some(x) = &self.right {
-            x.borrow().precalc_z_map(keys, values, copy_ptr(&x));
-        }
+        self.left.borrow().precalc_z_map(keys, values, copy_ptr(&self.left));
+        self.right.borrow().precalc_z_map(keys, values, copy_ptr(&self.right));
     }
 }
 
@@ -557,12 +533,12 @@ impl TrieNode for LeafTrieNode {
         &self.next
     }
 
-    fn get_left(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &None
+    fn get_left(&self) -> Option<&Ptr<dyn TrieNode>> {
+        None
     }
 
-    fn get_right(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &None
+    fn get_right(&self) -> Option<&Ptr<dyn TrieNode>> {
+        None
     }
 
     fn get_leftmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
@@ -573,12 +549,12 @@ impl TrieNode for LeafTrieNode {
         noderef
     }
 
-    fn get_jump_left(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &None
+    fn get_jump_left(&self) -> Option<&Ptr<dyn TrieNode>> {
+        None
     }
 
-    fn get_jump_right(&self) -> &Option<Ptr<dyn TrieNode>> {
-        &None
+    fn get_jump_right(&self) -> Option<&Ptr<dyn TrieNode>> {
+        None
     }
 
     fn set_lind(&mut self, x: usize) {
@@ -590,20 +566,16 @@ impl TrieNode for LeafTrieNode {
     }
 
     fn get_rind(&self) -> usize {
-        assert!(self.extent.is_some());
-        self.extent.as_ref().unwrap().len()
+        self.extent.len()
     }
 
     fn get_extent(&self) -> Str {
-        assert!(self.extent.is_some());
-        self.extent.as_ref().unwrap().clone()
+        self.extent.clone()
     }
 
     fn get_prefix_extent(&self, x: usize) -> Str {
         let rind = min(self.get_rind(), x);
-
-        assert!(self.extent.is_some());
-        self.extent.as_ref().unwrap()[0..rind].to_bitvec()
+        self.extent[0..rind].to_bitvec()
     }
 
     fn get_kth_left(&self, noderef: Ptr<dyn TrieNode>, _k: usize) -> Ptr<dyn TrieNode> {
