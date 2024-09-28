@@ -162,7 +162,7 @@ mod random_tests {
     #[test]
     fn test_compact_fixed() {
         let t = 1;
-        let bits = 1000;
+        let bits = 10000;
         let n = 5000;
         let m = 5000;
         let deb = false;
@@ -177,7 +177,7 @@ mod random_tests {
     #[test]
     fn test_z_fast_fixed() {
         let t = 1;
-        let bits = 1000;
+        let bits = 10000;
         let n = 5000;
         let m = 5000;
         let deb = false;
@@ -192,7 +192,7 @@ mod random_tests {
     #[test]
     fn test_z_fast_variable() {
         let t = 1;
-        let bits = 1000;
+        let bits = 10000;
         let n = 5000;
         let m = 5000;
         let deb = false;
@@ -207,7 +207,7 @@ mod random_tests {
     #[test]
     fn test_z_fast_sux_fixed() {
         let t = 1;
-        let bits = 1000;
+        let bits = 10000;
         let n = 5000;
         let m = 5000;
         let deb = false;
@@ -222,7 +222,7 @@ mod random_tests {
     #[test]
     fn test_z_fast_sux_variable() {
         let t = 1;
-        let bits = 1000;
+        let bits = 10000;
         let n = 5000;
         let m = 5000;
         let deb = false;
