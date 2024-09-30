@@ -107,6 +107,36 @@ mod random_tests {
 
         test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
     }
+
+    #[bench]
+    fn test_z_fast_fixed_small(b: &mut Bencher) {
+        let t = 1;
+        let bits = 40;
+        let n = 1000000;
+        let m = 1;
+        let deb = false;
+        let variablelen = false;
+        let fixed_seed = true;
+
+        let mut ds: Ds3 = Ds3::new();
+
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+    }
+
+    #[bench]
+    fn test_z_fast_sux_fixed_small(b: &mut Bencher) {
+        let t = 1;
+        let bits = 40;
+        let n = 1000000;
+        let m = 1;
+        let deb = false;
+        let variablelen = false;
+        let fixed_seed = true;
+
+        let mut ds: Ds4 = Ds4::new();
+
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+    }
 }
 
 fn gen_bin_str(rng: &mut SmallRng, n: u32) -> Str {

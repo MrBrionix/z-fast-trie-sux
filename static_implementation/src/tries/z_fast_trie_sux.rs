@@ -1,54 +1,55 @@
 use crate::static_dicts::minimal_perfect_hash_static_dict::MinimalPerfectHashStaticDict;
 use crate::traits::*;
 use crate::utils::*;
+use refbox::*;
 use std::cmp::min;
 
 pub struct ZFastTrieSux<H: Hash<DomainType = Str> + ParametricHash> {
-    root: Option<Ptr<dyn TrieNode>>,
-    z_map: MinimalPerfectHashStaticDict<Str, Ptr<dyn TrieNode>, H>,
+    root: Option<RefBox<dyn TrieNode>>,
+    z_map: MinimalPerfectHashStaticDict<Str, Ref<dyn TrieNode>, H>,
 }
 
 trait TrieNode {
     fn is_leaf(&self) -> bool;
-    fn get_prev(&self) -> &Option<Ptr<LeafTrieNode>>;
-    fn get_next(&self) -> &Option<Ptr<LeafTrieNode>>;
-    fn get_left(&self) -> Option<&Ptr<dyn TrieNode>>;
-    fn get_right(&self) -> Option<&Ptr<dyn TrieNode>>;
-    fn get_leftmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode>;
-    fn get_rightmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode>;
-    fn get_jump_left(&self) -> Option<&Ptr<dyn TrieNode>>;
-    fn get_jump_right(&self) -> Option<&Ptr<dyn TrieNode>>;
+    fn get_prev(&self) -> &Option<Ref<LeafTrieNode>>;
+    fn get_next(&self) -> &Option<Ref<LeafTrieNode>>;
+    fn get_left(&self) -> Option<Ref<dyn TrieNode>>;
+    fn get_right(&self) -> Option<Ref<dyn TrieNode>>;
+    fn get_leftmost(&self, noderef: Ref<dyn TrieNode>) -> Ref<dyn TrieNode>;
+    fn get_rightmost(&self, noderef: Ref<dyn TrieNode>) -> Ref<dyn TrieNode>;
+    fn get_jump_left(&self) -> Option<Ref<dyn TrieNode>>;
+    fn get_jump_right(&self) -> Option<Ref<dyn TrieNode>>;
     fn set_lind(&mut self, x: usize);
     fn get_lind(&self) -> usize;
     fn get_rind(&self) -> usize;
     fn get_extent(&self) -> Str;
     fn get_prefix_extent(&self, x: usize) -> Str;
-    fn get_kth_left(&self, noderef: Ptr<dyn TrieNode>, k: usize) -> Ptr<dyn TrieNode>;
-    fn get_kth_right(&self, noderef: Ptr<dyn TrieNode>, k: usize) -> Ptr<dyn TrieNode>;
-    fn precalc_jumps(&mut self, noderef: Ptr<dyn TrieNode>);
+    fn get_kth_left(&self, noderef: Ref<dyn TrieNode>, k: usize) -> Ref<dyn TrieNode>;
+    fn get_kth_right(&self, noderef: Ref<dyn TrieNode>, k: usize) -> Ref<dyn TrieNode>;
+    fn precalc_jumps(&mut self, noderef: Ref<dyn TrieNode>);
     fn get_handle(&self) -> Option<Str>;
     fn precalc_z_map(
         &self,
         keys: &mut Vec<Str>,
-        values: &mut Vec<Ptr<dyn TrieNode>>,
-        r: Ptr<dyn TrieNode>
+        values: &mut Vec<Ref<dyn TrieNode>>,
+        r: Ref<dyn TrieNode>
     );
 }
 
 struct InternalTrieNode {
-    left: Ptr<dyn TrieNode>,
-    right: Ptr<dyn TrieNode>,
+    left: RefBox<dyn TrieNode>,
+    right: RefBox<dyn TrieNode>,
     lind: usize,
-    jump_left: Ptr<dyn TrieNode>,
-    jump_right: Ptr<dyn TrieNode>,
-    to_leaf: Ptr<LeafTrieNode>,
+    jump_left: Ref<dyn TrieNode>,
+    jump_right: Ref<dyn TrieNode>,
+    to_leaf: Ref<LeafTrieNode>,
 }
 
 struct LeafTrieNode {
     lind: usize,
-    prev: Option<Ptr<LeafTrieNode>>,
-    next: Option<Ptr<LeafTrieNode>>,
-    to_internal: Option<Ptr<InternalTrieNode>>,
+    prev: Option<Ref<LeafTrieNode>>,
+    next: Option<Ref<LeafTrieNode>>,
+    to_internal: Option<Ref<InternalTrieNode>>,
     extent: Str,
 }
 
@@ -61,8 +62,8 @@ impl<H: Hash<DomainType = Str> + ParametricHash> Trie for ZFastTrieSux<H> {
         if let Some(r) = &self.root {
             let mut keys = Vec::new();
             let mut values = Vec::new();
-            r.borrow().precalc_z_map(&mut keys, &mut values, copy_ptr(&r));
-            r.borrow_mut().precalc_jumps(copy_ptr(&r));
+            r.try_borrow_mut().unwrap().precalc_z_map(&mut keys, &mut values, r.create_ref());
+            r.try_borrow_mut().unwrap().precalc_jumps(r.create_ref());
             self.z_map.build(&keys, &values);
         }
     }
@@ -98,13 +99,13 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
         ind: usize,
         l: usize,
         r: usize,
-        last_leaf_ref: &mut Option<Ptr<LeafTrieNode>>
-    ) -> (Option<Ptr<dyn TrieNode>>, Option<Ptr<LeafTrieNode>>) {
+        last_leaf_ref: &mut Option<Ref<LeafTrieNode>>
+    ) -> (Option<RefBox<dyn TrieNode>>, Option<Ref<LeafTrieNode>>) {
         assert!(ind < v[l].len() || l + 1 >= r, "Build error: v is not prefix free");
         if l == r {
             (None, None)
         } else if l + 1 == r {
-            let leaf = new_ptr(LeafTrieNode {
+            let leaf = RefBox::new(LeafTrieNode {
                 lind: ind,
                 prev: last_leaf_ref.clone(),
                 next: None,
@@ -112,13 +113,13 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                 extent: v[l].clone(),
             });
 
-            let leafp = copy_ptr(&leaf);
+            let leafp = leaf.create_ref();
             if let Some(x) = last_leaf_ref {
-                x.borrow_mut().next = Some(leafp.clone());
+                x.try_borrow_mut().unwrap().next = Some(leafp.clone());
             }
             *last_leaf_ref = Some(leafp.clone());
 
-            (Some(leaf), Some(leafp))
+            (Some(coerce!(leaf => dyn TrieNode)), Some(leafp))
         } else {
             let mut mid = l;
             while mid < r && !v[mid][ind] {
@@ -129,31 +130,30 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                 let (l, pl) = ZFastTrieSux::<H>::build_tree(v, ind + 1, l, mid, last_leaf_ref);
                 let (r, pr) = ZFastTrieSux::<H>::build_tree(v, ind + 1, mid, r, last_leaf_ref);
 
-                let tmpl = l.clone();
-                let tmpr = r.clone();
-                let res = new_ptr(InternalTrieNode {
-                    left: l.expect("left child in ZFastTrieSux build"),
-                    right: r.expect("right child in ZFastTrieSux build"),
+                let tmpl = l.expect("left child in ZFastTrieSux build");
+                let tmpr = r.expect("right child in ZFastTrieSux build");
+                let res = RefBox::new(InternalTrieNode {
+                    jump_left: tmpl.create_ref(),
+                    jump_right: tmpr.create_ref(),
+                    left: tmpl,
+                    right: tmpr,
                     lind: ind,
-                    jump_left: tmpl.expect("left jump in ZFastTrieSux build"),
-                    jump_right: tmpr.expect("right jump in ZFastTrieSux build"),
-                    to_leaf: pl.expect("to leaf pointer in ZFastTrieSux build"),
+                    to_leaf: pl.clone().expect("to leaf pointer in ZFastTrieSux build"),
                 });
+                pl.expect("ok").try_borrow_mut().unwrap().to_internal = Some(res.create_ref());
 
-                res.borrow().to_leaf.borrow_mut().to_internal = Some(copy_ptr(&res));
-
-                (Some(res), pr)
+                (Some(coerce!(res => dyn TrieNode)), pr)
             } else {
                 let (x, y) = ZFastTrieSux::<H>::build_tree(v, ind + 1, l, r, last_leaf_ref);
                 assert!(x.is_some());
                 let res = x.unwrap();
-                res.borrow_mut().set_lind(ind);
+                res.try_borrow_mut().unwrap().set_lind(ind);
                 (Some(res), y)
             }
         }
     }
 
-    fn locate_exit_or_parex_prob(&self, x: &Str) -> Option<Ptr<dyn TrieNode>> {
+    fn locate_exit_or_parex_prob(&self, x: &Str) -> Option<Ref<dyn TrieNode>> {
         let mut res = None;
         let (mut a, mut b) = (0, x.len());
         let mut m = {
@@ -169,8 +169,8 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
 
                 let beta = self.z_map.fast_prefix_get(x, &state, f);
                 if let Some(node_ref) = beta {
-                    let rind = node_ref.borrow().get_rind();
-                    let lind = node_ref.borrow().get_lind();
+                    let rind = node_ref.try_borrow_mut().unwrap().get_rind();
+                    let lind = node_ref.try_borrow_mut().unwrap().get_lind();
                     if get_fattest(rind, lind) == f {
                         a = rind + 1;
                         res = Some(node_ref.clone());
@@ -193,7 +193,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
         res
     }
 
-    fn locate_parex(&self, x: &Str) -> Option<Ptr<dyn TrieNode>> {
+    fn locate_parex(&self, x: &Str) -> Option<Ref<dyn TrieNode>> {
         let mut res = None;
         let (mut a, mut b) = (0, x.len());
         let mut m = {
@@ -209,9 +209,9 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
 
                 let beta = self.z_map.fast_prefix_get(x, &state, f);
                 if let Some(node_ref) = beta {
-                    let extent = node_ref.borrow().get_extent();
-                    let rind = node_ref.borrow().get_rind();
-                    let lind = node_ref.borrow().get_lind();
+                    let extent = node_ref.try_borrow_mut().unwrap().get_extent();
+                    let rind = node_ref.try_borrow_mut().unwrap().get_rind();
+                    let lind = node_ref.try_borrow_mut().unwrap().get_lind();
                     if
                         extent.len() < x.len() &&
                         get_fattest(rind, lind) == f &&
@@ -238,11 +238,11 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
         res
     }
 
-    fn locate_exit_or_parex(&self, x: &Str) -> Option<Ptr<dyn TrieNode>> {
+    fn locate_exit_or_parex(&self, x: &Str) -> Option<Ref<dyn TrieNode>> {
         let mut res = self.locate_exit_or_parex_prob(x);
         let handle = {
             if res.is_some() {
-                res.as_ref().unwrap().borrow().get_handle().unwrap()
+                res.as_ref().unwrap().try_borrow_mut().unwrap().get_handle().unwrap()
             } else {
                 Str::new()
             }
@@ -257,19 +257,19 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
     fn locate_exit_from_node(
         &self,
         x: &Str,
-        sigma: Option<Ptr<dyn TrieNode>>
-    ) -> Option<Ptr<dyn TrieNode>> {
+        sigma: Option<Ref<dyn TrieNode>>
+    ) -> Option<Ref<dyn TrieNode>> {
         if let Some(node_ref) = &sigma {
-            let node = node_ref.borrow();
+            let node = node_ref.try_borrow_mut().unwrap();
             let extent = node.get_extent();
 
             if extent.len() < x.len() && extent == x[0..min(extent.len(), x.len())] {
                 if !x[extent.len()] {
                     assert!(node.get_left().is_some());
-                    Some(copy_ptr(&node.get_left().as_ref().unwrap()))
+                    Some(node.get_left().unwrap().clone())
                 } else {
                     assert!(node.get_right().is_some());
-                    Some(copy_ptr(&node.get_right().as_ref().unwrap()))
+                    Some(node.get_right().unwrap().clone())
                 }
             } else {
                 sigma.clone()
@@ -277,11 +277,11 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
         } else {
             assert!(self.root.is_some());
             let r = self.root.as_ref().unwrap();
-            Some(copy_ptr(&r))
+            Some(r.create_ref())
         }
     }
 
-    fn locate_exit(&self, x: &Str) -> Option<Ptr<dyn TrieNode>> {
+    fn locate_exit(&self, x: &Str) -> Option<Ref<dyn TrieNode>> {
         if !self.root.is_some() {
             None
         } else {
@@ -290,7 +290,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                 if res.is_some() {
                     self.locate_exit_from_node(x, res)
                 } else {
-                    Some(copy_ptr(&self.root.as_ref().unwrap()))
+                    Some(self.root.as_ref().unwrap().create_ref())
                 }
             };
             eta.clone()
@@ -302,19 +302,19 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             let (mut prev, mut succ) = (None, None);
 
             let leaf;
-            if *x <= eta.borrow().get_extent() {
-                leaf = eta.borrow().get_leftmost(eta.clone());
-                succ = Some(leaf.borrow().get_extent());
+            if *x <= eta.try_borrow_mut().unwrap().get_extent() {
+                leaf = eta.try_borrow_mut().unwrap().get_leftmost(eta.clone());
+                succ = Some(leaf.try_borrow_mut().unwrap().get_extent());
 
-                if let Some(leaf2) = &leaf.borrow().get_prev() {
-                    prev = Some(leaf2.borrow().get_extent());
+                if let Some(leaf2) = &leaf.try_borrow_mut().unwrap().get_prev() {
+                    prev = Some(leaf2.try_borrow_mut().unwrap().get_extent());
                 }
             } else {
-                leaf = eta.borrow().get_rightmost(eta.clone());
-                prev = Some(leaf.borrow().get_extent());
+                leaf = eta.try_borrow_mut().unwrap().get_rightmost(eta.clone());
+                prev = Some(leaf.try_borrow_mut().unwrap().get_extent());
 
-                if let Some(leaf2) = &leaf.borrow().get_next() {
-                    succ = Some(leaf2.borrow().get_extent());
+                if let Some(leaf2) = &leaf.try_borrow_mut().unwrap().get_next() {
+                    succ = Some(leaf2.try_borrow_mut().unwrap().get_extent());
                 }
             }
 
@@ -326,7 +326,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
 
     fn pref_query(&self, x: &Str) -> Option<Str> {
         if let Some(exit_node) = self.locate_exit(x) {
-            Some(exit_node.borrow().get_prefix_extent(x.len()))
+            Some(exit_node.try_borrow_mut().unwrap().get_prefix_extent(x.len()))
         } else {
             None
         }
@@ -336,58 +336,82 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
         if x == y {
             return false;
         } else if let Some(mut alpha) = self.locate_exit(x) {
-            if *x <= alpha.borrow().get_extent() {
-                while !alpha.borrow().is_leaf() {
-                    if alpha.borrow().get_extent().len() < y.len() {
-                        let tmp = alpha.borrow().get_jump_left().clone().unwrap().clone();
+            if *x <= alpha.try_borrow_mut().unwrap().get_extent() {
+                while !alpha.try_borrow_mut().unwrap().is_leaf() {
+                    if alpha.try_borrow_mut().unwrap().get_extent().len() < y.len() {
+                        let tmp = alpha
+                            .try_borrow_mut()
+                            .unwrap()
+                            .get_jump_left()
+                            .clone()
+                            .unwrap()
+                            .clone();
                         alpha = tmp;
                     } else {
                         break;
                     }
                 }
-                return alpha.borrow().get_extent() < *y;
+                return alpha.try_borrow_mut().unwrap().get_extent() < *y;
             }
 
             let mut beta = self.locate_exit(y).unwrap();
-            if *x > beta.borrow().get_extent() {
-                while !beta.borrow().is_leaf() {
-                    if beta.borrow().get_extent().len() < x.len() {
-                        let tmp = beta.borrow().get_jump_right().clone().unwrap().clone();
+            if *x > beta.try_borrow_mut().unwrap().get_extent() {
+                while !beta.try_borrow_mut().unwrap().is_leaf() {
+                    if beta.try_borrow_mut().unwrap().get_extent().len() < x.len() {
+                        let tmp = beta
+                            .try_borrow_mut()
+                            .unwrap()
+                            .get_jump_right()
+                            .clone()
+                            .unwrap()
+                            .clone();
                         beta = tmp;
                     } else {
                         break;
                     }
                 }
-                return *x <= beta.borrow().get_extent();
+                return *x <= beta.try_borrow_mut().unwrap().get_extent();
             }
 
             let z = lcp(x, y);
             let eta = self.locate_exit(&z).unwrap();
 
-            alpha = copy_ptr(&eta.borrow().get_left().as_ref().unwrap());
-            while !alpha.borrow().is_leaf() {
-                if alpha.borrow().get_extent().len() < x.len() {
-                    let tmp = alpha.borrow().get_jump_right().clone().unwrap().clone();
+            alpha = eta.try_borrow_mut().unwrap().get_left().unwrap().clone();
+            while !alpha.try_borrow_mut().unwrap().is_leaf() {
+                if alpha.try_borrow_mut().unwrap().get_extent().len() < x.len() {
+                    let tmp = alpha
+                        .try_borrow_mut()
+                        .unwrap()
+                        .get_jump_right()
+                        .clone()
+                        .unwrap()
+                        .clone();
                     alpha = tmp;
                 } else {
                     break;
                 }
             }
-            if *x <= alpha.borrow().get_extent() {
+            if *x <= alpha.try_borrow_mut().unwrap().get_extent() {
                 return true;
             }
 
-            beta = copy_ptr(&eta.borrow().get_right().as_ref().unwrap());
-            while !beta.borrow().is_leaf() {
-                if beta.borrow().get_extent().len() < y.len() {
-                    let tmp = beta.borrow().get_jump_left().clone().unwrap().clone();
+            beta = eta.try_borrow_mut().unwrap().get_right().unwrap().clone();
+            while !beta.try_borrow_mut().unwrap().is_leaf() {
+                if beta.try_borrow_mut().unwrap().get_extent().len() < y.len() {
+                    let tmp = beta
+                        .try_borrow_mut()
+                        .unwrap()
+                        .get_jump_left()
+                        .clone()
+                        .unwrap()
+                        .clone();
                     beta = tmp;
                 } else {
                     break;
                 }
             }
 
-            let candidate = beta.borrow().get_extent();
+            let candidate = beta.try_borrow_mut().unwrap().get_extent();
             candidate < *y
         } else {
             false
@@ -400,36 +424,36 @@ impl TrieNode for InternalTrieNode {
         false
     }
 
-    fn get_prev(&self) -> &Option<Ptr<LeafTrieNode>> {
+    fn get_prev(&self) -> &Option<Ref<LeafTrieNode>> {
         &None
     }
 
-    fn get_next(&self) -> &Option<Ptr<LeafTrieNode>> {
+    fn get_next(&self) -> &Option<Ref<LeafTrieNode>> {
         &None
     }
 
-    fn get_left(&self) -> Option<&Ptr<dyn TrieNode>> {
-        Some(&self.left)
+    fn get_left(&self) -> Option<Ref<dyn TrieNode>> {
+        Some(self.left.create_ref())
     }
 
-    fn get_right(&self) -> Option<&Ptr<dyn TrieNode>> {
-        Some(&self.right)
+    fn get_right(&self) -> Option<Ref<dyn TrieNode>> {
+        Some(self.right.create_ref())
     }
 
-    fn get_leftmost(&self, _noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
-        self.jump_left.as_ref().borrow().get_leftmost(self.jump_left.clone())
+    fn get_leftmost(&self, _noderef: Ref<dyn TrieNode>) -> Ref<dyn TrieNode> {
+        self.jump_left.try_borrow_mut().unwrap().get_leftmost(self.jump_left.clone())
     }
 
-    fn get_rightmost(&self, _noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
-        self.jump_right.as_ref().borrow().get_rightmost(self.jump_right.clone())
+    fn get_rightmost(&self, _noderef: Ref<dyn TrieNode>) -> Ref<dyn TrieNode> {
+        self.jump_right.try_borrow_mut().unwrap().get_rightmost(self.jump_right.clone())
     }
 
-    fn get_jump_left(&self) -> Option<&Ptr<dyn TrieNode>> {
-        Some(&self.jump_left)
+    fn get_jump_left(&self) -> Option<Ref<dyn TrieNode>> {
+        Some(self.jump_left.clone())
     }
 
-    fn get_jump_right(&self) -> Option<&Ptr<dyn TrieNode>> {
-        Some(&self.jump_right)
+    fn get_jump_right(&self) -> Option<Ref<dyn TrieNode>> {
+        Some(self.jump_right.clone())
     }
 
     fn set_lind(&mut self, x: usize) {
@@ -441,44 +465,44 @@ impl TrieNode for InternalTrieNode {
     }
 
     fn get_rind(&self) -> usize {
-        self.left.borrow().get_lind() - 1
+        self.left.try_borrow_mut().unwrap().get_lind() - 1
     }
 
     fn get_extent(&self) -> Str {
         let rind = self.get_rind();
 
         let p = &self.to_leaf;
-        p.borrow().extent[0..rind].to_bitvec()
+        p.try_borrow_mut().unwrap().extent[0..rind].to_bitvec()
     }
 
     fn get_prefix_extent(&self, x: usize) -> Str {
         let rind = min(self.get_rind(), x);
 
         let p = &self.to_leaf;
-        p.borrow().get_prefix_extent(rind)
+        p.try_borrow_mut().unwrap().get_prefix_extent(rind)
     }
 
-    fn get_kth_left(&self, noderef: Ptr<dyn TrieNode>, k: usize) -> Ptr<dyn TrieNode> {
+    fn get_kth_left(&self, noderef: Ref<dyn TrieNode>, k: usize) -> Ref<dyn TrieNode> {
         let rind = self.get_rind();
         if k >= self.lind && k <= rind {
             noderef
         } else {
             let x = &self.left;
-            x.borrow().get_kth_left(copy_ptr(&x), k)
+            x.try_borrow_mut().unwrap().get_kth_left(x.create_ref(), k)
         }
     }
 
-    fn get_kth_right(&self, noderef: Ptr<dyn TrieNode>, k: usize) -> Ptr<dyn TrieNode> {
+    fn get_kth_right(&self, noderef: Ref<dyn TrieNode>, k: usize) -> Ref<dyn TrieNode> {
         let rind = self.get_rind();
         if k >= self.lind && k <= rind {
             noderef
         } else {
             let x = &self.right;
-            x.borrow().get_kth_right(copy_ptr(&x), k)
+            x.try_borrow_mut().unwrap().get_kth_right(x.create_ref(), k)
         }
     }
 
-    fn precalc_jumps(&mut self, noderef: Ptr<dyn TrieNode>) {
+    fn precalc_jumps(&mut self, noderef: Ref<dyn TrieNode>) {
         let k = get_fattest(self.get_rind(), self.lind);
 
         self.jump_left = self.get_kth_left(noderef.clone(), if k == 0 {
@@ -487,36 +511,36 @@ impl TrieNode for InternalTrieNode {
             k + (1 << k.trailing_zeros())
         });
 
-        self.left.borrow_mut().precalc_jumps(copy_ptr(&self.left));
+        self.left.try_borrow_mut().unwrap().precalc_jumps(self.left.create_ref());
 
         self.jump_right = self.get_kth_right(noderef, if k == 0 {
             usize::MAX
         } else {
             k + (1 << k.trailing_zeros())
         });
-        self.right.borrow_mut().precalc_jumps(copy_ptr(&self.right));
+        self.right.try_borrow_mut().unwrap().precalc_jumps(self.right.create_ref());
     }
 
     fn get_handle(&self) -> Option<Str> {
         let rind = self.get_rind();
 
         let p = &self.to_leaf;
-        Some(p.borrow().extent[0..get_fattest(rind, self.lind)].to_bitvec())
+        Some(p.try_borrow_mut().unwrap().extent[0..get_fattest(rind, self.lind)].to_bitvec())
     }
 
     fn precalc_z_map(
         &self,
         keys: &mut Vec<Str>,
-        values: &mut Vec<Ptr<dyn TrieNode>>,
-        r: Ptr<dyn TrieNode>
+        values: &mut Vec<Ref<dyn TrieNode>>,
+        r: Ref<dyn TrieNode>
     ) {
         let s = self.get_handle();
         assert!(s.is_some());
         keys.push(s.unwrap());
         values.push(r);
 
-        self.left.borrow().precalc_z_map(keys, values, copy_ptr(&self.left));
-        self.right.borrow().precalc_z_map(keys, values, copy_ptr(&self.right));
+        self.left.try_borrow_mut().unwrap().precalc_z_map(keys, values, self.left.create_ref());
+        self.right.try_borrow_mut().unwrap().precalc_z_map(keys, values, self.right.create_ref());
     }
 }
 
@@ -525,35 +549,35 @@ impl TrieNode for LeafTrieNode {
         true
     }
 
-    fn get_prev(&self) -> &Option<Ptr<LeafTrieNode>> {
+    fn get_prev(&self) -> &Option<Ref<LeafTrieNode>> {
         &self.prev
     }
 
-    fn get_next(&self) -> &Option<Ptr<LeafTrieNode>> {
+    fn get_next(&self) -> &Option<Ref<LeafTrieNode>> {
         &self.next
     }
 
-    fn get_left(&self) -> Option<&Ptr<dyn TrieNode>> {
+    fn get_left(&self) -> Option<Ref<dyn TrieNode>> {
         None
     }
 
-    fn get_right(&self) -> Option<&Ptr<dyn TrieNode>> {
+    fn get_right(&self) -> Option<Ref<dyn TrieNode>> {
         None
     }
 
-    fn get_leftmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
+    fn get_leftmost(&self, noderef: Ref<dyn TrieNode>) -> Ref<dyn TrieNode> {
         noderef
     }
 
-    fn get_rightmost(&self, noderef: Ptr<dyn TrieNode>) -> Ptr<dyn TrieNode> {
+    fn get_rightmost(&self, noderef: Ref<dyn TrieNode>) -> Ref<dyn TrieNode> {
         noderef
     }
 
-    fn get_jump_left(&self) -> Option<&Ptr<dyn TrieNode>> {
+    fn get_jump_left(&self) -> Option<Ref<dyn TrieNode>> {
         None
     }
 
-    fn get_jump_right(&self) -> Option<&Ptr<dyn TrieNode>> {
+    fn get_jump_right(&self) -> Option<Ref<dyn TrieNode>> {
         None
     }
 
@@ -578,15 +602,15 @@ impl TrieNode for LeafTrieNode {
         self.extent[0..rind].to_bitvec()
     }
 
-    fn get_kth_left(&self, noderef: Ptr<dyn TrieNode>, _k: usize) -> Ptr<dyn TrieNode> {
+    fn get_kth_left(&self, noderef: Ref<dyn TrieNode>, _k: usize) -> Ref<dyn TrieNode> {
         noderef
     }
 
-    fn get_kth_right(&self, noderef: Ptr<dyn TrieNode>, _k: usize) -> Ptr<dyn TrieNode> {
+    fn get_kth_right(&self, noderef: Ref<dyn TrieNode>, _k: usize) -> Ref<dyn TrieNode> {
         noderef
     }
 
-    fn precalc_jumps(&mut self, _noderef: Ptr<dyn TrieNode>) {}
+    fn precalc_jumps(&mut self, _noderef: Ref<dyn TrieNode>) {}
 
     fn get_handle(&self) -> Option<Str> {
         None
@@ -595,7 +619,7 @@ impl TrieNode for LeafTrieNode {
     fn precalc_z_map(
         &self,
         _keys: &mut Vec<Str>,
-        _values: &mut Vec<Ptr<dyn TrieNode>>,
-        _r: Ptr<dyn TrieNode>
+        _values: &mut Vec<Ref<dyn TrieNode>>,
+        _r: Ref<dyn TrieNode>
     ) {}
 }
