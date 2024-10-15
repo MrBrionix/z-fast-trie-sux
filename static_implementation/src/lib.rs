@@ -1,6 +1,3 @@
-#![feature(test)]
-extern crate test;
-
 pub mod hashes;
 pub mod rank_structures;
 pub mod static_dicts;
@@ -21,20 +18,18 @@ use crate::prelude::*;
 use rand::prelude::*;
 use std::cmp::min;
 use std::mem::swap;
-use test::Bencher;
 
 #[cfg(test)]
 mod random_tests {
     use crate::*;
-    use test::Bencher;
 
     type Ds1 = NaiveTrie;
     type Ds2 = CompactTrie;
     type Ds3 = ZFastTrie<RollingHash>;
     type Ds4 = ZFastTrieSux<RollingHash>;
 
-    #[bench]
-    fn test_compact_fixed(b: &mut Bencher) {
+    #[test]
+    fn test_compact_fixed() {
         let t = 1;
         let bits = 10000;
         let n = 5000;
@@ -45,11 +40,11 @@ mod random_tests {
 
         let mut ds: Ds2 = Ds2::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    #[bench]
-    fn test_z_fast_fixed(b: &mut Bencher) {
+    #[test]
+    fn test_z_fast_fixed() {
         let t = 1;
         let bits = 10000;
         let n = 5000;
@@ -60,11 +55,11 @@ mod random_tests {
 
         let mut ds: Ds3 = Ds3::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    #[bench]
-    fn test_z_fast_variable(b: &mut Bencher) {
+    #[test]
+    fn test_z_fast_variable() {
         let t = 1;
         let bits = 10000;
         let n = 5000;
@@ -75,11 +70,11 @@ mod random_tests {
 
         let mut ds: Ds3 = Ds3::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    #[bench]
-    fn test_z_fast_sux_fixed(b: &mut Bencher) {
+    #[test]
+    fn test_z_fast_sux_fixed() {
         let t = 1;
         let bits = 10000;
         let n = 5000;
@@ -90,11 +85,11 @@ mod random_tests {
 
         let mut ds: Ds4 = Ds4::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    #[bench]
-    fn test_z_fast_sux_variable(b: &mut Bencher) {
+    #[test]
+    fn test_z_fast_sux_variable() {
         let t = 1;
         let bits = 10000;
         let n = 5000;
@@ -105,11 +100,11 @@ mod random_tests {
 
         let mut ds: Ds4 = Ds4::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    #[bench]
-    fn test_z_fast_fixed_small(b: &mut Bencher) {
+    //#[test]
+    fn test_z_fast_fixed_small() {
         let t = 1;
         let bits = 40;
         let n = 1000000;
@@ -120,11 +115,11 @@ mod random_tests {
 
         let mut ds: Ds3 = Ds3::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    #[bench]
-    fn test_z_fast_sux_fixed_small(b: &mut Bencher) {
+    //#[test]
+    fn test_z_fast_sux_fixed_small() {
         let t = 1;
         let bits = 40;
         let n = 1000000;
@@ -135,7 +130,7 @@ mod random_tests {
 
         let mut ds: Ds4 = Ds4::new();
 
-        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, b);
+        test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 }
 
@@ -155,8 +150,7 @@ pub fn test<T: Trie>(
     deb: bool,
     variablelen: bool,
     fixed_seed: bool,
-    ds: &mut T,
-    b: &mut Bencher
+    ds: &mut T
 ) {
     let mut rng = {
         if fixed_seed { SmallRng::seed_from_u64(0) } else { SmallRng::from_rng(thread_rng()) }
@@ -211,7 +205,7 @@ pub fn test<T: Trie>(
                 print!("query: {} & {}\n", s1, s2);
             }
 
-            b.iter(|| { ds.pred_query(&s1) });
+            ds.pred_query(&s1);
             /*let pred = ds.pred_query(&s1);
             if deb {
                 if let Some(t) = pred {
