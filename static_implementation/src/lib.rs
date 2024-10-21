@@ -205,8 +205,7 @@ pub fn test<T: Trie>(
                 print!("query: {} & {}\n", s1, s2);
             }
 
-            ds.pred_query(&s1);
-            /*let pred = ds.pred_query(&s1);
+            let pred = ds.pred_query(&s1);
             if deb {
                 if let Some(t) = pred {
                     print!("pred: {}\n", t);
@@ -228,7 +227,7 @@ pub fn test<T: Trie>(
             if deb {
                 print!("range query: {}\n", flag);
                 print!("------------\n");
-            }*/
+            }
         }
     }
 }

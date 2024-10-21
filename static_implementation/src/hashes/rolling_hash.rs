@@ -37,7 +37,7 @@ impl Hash for RollingHash {
             }
             currind += WORD_SIZE;
 
-            res += ((x.load::<Self::HashType>() + 1) * pot) % self.modulo;
+            res += (((x.load::<Self::HashType>() + 1) % self.modulo) * pot) % self.modulo;
             res %= self.modulo;
 
             pot *= self.base;
@@ -69,7 +69,7 @@ impl Hash for RollingHash {
         let mut pots = vec![pot];
 
         for x in s.chunks(WORD_SIZE) {
-            res += (((x.load::<usize>() as Self::HashType) + 1) * pot) % self.modulo;
+            res += ((((x.load::<usize>() as Self::HashType) + 1) % self.modulo) * pot) % self.modulo;
             res %= self.modulo;
             v.push(res);
 

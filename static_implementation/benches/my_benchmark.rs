@@ -188,7 +188,7 @@ pub fn bench<T: Trie>(
                 print!("query: {} & {}\n", s1, s2);
             }
 
-            group.bench_with_input(BenchmarkId::from_parameter(&s1), &s1, |b, s1| b.iter(|| ds.pred_query(&s1)));
+            group.bench_with_input(BenchmarkId::from_parameter(&s1[0..min(20,s1.len())]), &s1, |b, s1| b.iter(|| ds.pred_query(&s1)));
             //c.bench_function(name,|b| b.iter(|| ds.pred_query(&s1)));
             
             /*let pred = ds.pred_query(&s1);

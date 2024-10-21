@@ -2,7 +2,7 @@ use bitvec::prelude::*;
 use std::cmp::*;
 
 pub type Str = BitVec<u32>;
-pub const WORD_SIZE: usize = 32;
+pub const WORD_SIZE: usize = 64;
 
 pub fn lcp(x: &Str, y: &Str) -> Str {
     let mut currind: usize = 0;
