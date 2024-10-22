@@ -5,7 +5,7 @@ pub struct NaiveHash;
 
 impl Hash for NaiveHash {
     type DomainType = Str;
-    type HashType = Str;
+    type HashType = Vec<usize>;
     type State = ();
 
     fn new() -> Self {
@@ -17,7 +17,11 @@ impl Hash for NaiveHash {
     }
 
     fn slow_prefix_hash(&self, s: &Self::DomainType, ind: usize) -> Self::HashType {
-        s[0..ind].to_bitvec()
+        let mut res : Self::HashType = vec![];
+        for i in get_substr(s,0,ind).as_ref() {
+            res.push(*i);
+        }
+        res
     }
 
     fn compute_state(&self, _s: &Self::DomainType) {}

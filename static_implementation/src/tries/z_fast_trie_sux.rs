@@ -3,6 +3,7 @@ use crate::traits::*;
 use crate::utils::*;
 use refbox::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 
 pub struct ZFastTrieSux<H: Hash<DomainType = Str> + ParametricHash> {
     root: Option<RefBox<dyn TrieNode>>,
@@ -56,7 +57,7 @@ struct LeafTrieNode {
 impl<H: Hash<DomainType = Str> + ParametricHash> Trie for ZFastTrieSux<H> {
     fn build(&mut self, v: &Vec<Str>) {
         let mut x = v.to_vec();
-        x.sort();
+        x.sort_by(cmp);
         self.z_map = MinimalPerfectHashStaticDict::new();
         self.root = ZFastTrieSux::<H>::build_tree(&x, 0, 0, v.len(), &mut None).0;
         if let Some(r) = &self.root {
@@ -78,7 +79,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> Trie for ZFastTrieSux<H> {
 
     fn ex_pref_query(&self, x: &Str) -> bool {
         if let Some(i) = &self.pref_query(x) {
-            i.len() == x.len() && i[0..min(i.len(), x.len())] == *x
+            i.len() == x.len() && get_substr(i,0,min(i.len(), x.len())) == *x
         } else {
             false
         }
@@ -215,7 +216,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                     if
                         extent.len() < x.len() &&
                         get_fattest(rind, lind) == f &&
-                        extent == x[0..extent.len()]
+                        extent == get_substr(x,0,extent.len())
                     {
                         a = rind + 1;
                         res = Some(node_ref.clone());
@@ -244,11 +245,11 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             if res.is_some() {
                 res.as_ref().unwrap().try_borrow_mut().unwrap().get_handle().unwrap()
             } else {
-                Str::new()
+                Str::new(0)
             }
         };
 
-        if handle != x[0..min(x.len(), handle.len())] {
+        if handle != get_substr(x,0,min(x.len(), handle.len())) {
             res = self.locate_parex(x);
         }
         return res;
@@ -263,7 +264,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             let node = node_ref.try_borrow_mut().unwrap();
             let extent = node.get_extent();
 
-            if extent.len() < x.len() && extent == x[0..min(extent.len(), x.len())] {
+            if extent.len() < x.len() && extent == get_substr(x,0,min(extent.len(), x.len())) {
                 if !x[extent.len()] {
                     assert!(node.get_left().is_some());
                     Some(node.get_left().unwrap().clone())
@@ -302,7 +303,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             let (mut prev, mut succ) = (None, None);
 
             let leaf;
-            if *x <= eta.try_borrow_mut().unwrap().get_extent() {
+            if cmp(x,&eta.try_borrow_mut().unwrap().get_extent()) != Greater {
                 leaf = eta.try_borrow_mut().unwrap().get_leftmost(eta.clone());
                 succ = Some(leaf.try_borrow_mut().unwrap().get_extent());
 
@@ -336,7 +337,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
         if x == y {
             return false;
         } else if let Some(mut alpha) = self.locate_exit(x) {
-            if *x <= alpha.try_borrow_mut().unwrap().get_extent() {
+            if cmp(x,&alpha.try_borrow_mut().unwrap().get_extent()) != Greater {
                 while !alpha.try_borrow_mut().unwrap().is_leaf() {
                     if alpha.try_borrow_mut().unwrap().get_extent().len() < y.len() {
                         let tmp = alpha
@@ -351,11 +352,11 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                         break;
                     }
                 }
-                return alpha.try_borrow_mut().unwrap().get_extent() < *y;
+                return cmp(&alpha.try_borrow_mut().unwrap().get_extent(),y) == Less;
             }
 
             let mut beta = self.locate_exit(y).unwrap();
-            if *x > beta.try_borrow_mut().unwrap().get_extent() {
+            if cmp(x,&beta.try_borrow_mut().unwrap().get_extent()) == Greater {
                 while !beta.try_borrow_mut().unwrap().is_leaf() {
                     if beta.try_borrow_mut().unwrap().get_extent().len() < x.len() {
                         let tmp = beta
@@ -370,7 +371,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                         break;
                     }
                 }
-                return *x <= beta.try_borrow_mut().unwrap().get_extent();
+                return cmp(x,&beta.try_borrow_mut().unwrap().get_extent()) != Greater;
             }
 
             let z = lcp(x, y);
@@ -391,7 +392,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
                     break;
                 }
             }
-            if *x <= alpha.try_borrow_mut().unwrap().get_extent() {
+            if cmp(x,&alpha.try_borrow_mut().unwrap().get_extent()) != Greater {
                 return true;
             }
 
@@ -412,7 +413,7 @@ impl<H: Hash<DomainType = Str> + ParametricHash> ZFastTrieSux<H> {
             }
 
             let candidate = beta.try_borrow_mut().unwrap().get_extent();
-            candidate < *y
+            cmp(&candidate,y) == Less
         } else {
             false
         }
@@ -472,7 +473,7 @@ impl TrieNode for InternalTrieNode {
         let rind = self.get_rind();
 
         let p = &self.to_leaf;
-        p.try_borrow_mut().unwrap().extent[0..rind].to_bitvec()
+        get_substr(&p.try_borrow_mut().unwrap().extent,0,rind)
     }
 
     fn get_prefix_extent(&self, x: usize) -> Str {
@@ -525,7 +526,7 @@ impl TrieNode for InternalTrieNode {
         let rind = self.get_rind();
 
         let p = &self.to_leaf;
-        Some(p.try_borrow_mut().unwrap().extent[0..get_fattest(rind, self.lind)].to_bitvec())
+        Some(get_substr(&p.try_borrow_mut().unwrap().extent,0,get_fattest(rind, self.lind)))
     }
 
     fn precalc_z_map(
@@ -599,7 +600,7 @@ impl TrieNode for LeafTrieNode {
 
     fn get_prefix_extent(&self, x: usize) -> Str {
         let rind = min(self.get_rind(), x);
-        self.extent[0..rind].to_bitvec()
+        get_substr(&self.extent,0,rind)
     }
 
     fn get_kth_left(&self, noderef: Ref<dyn TrieNode>, _k: usize) -> Ref<dyn TrieNode> {

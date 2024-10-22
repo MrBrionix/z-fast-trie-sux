@@ -1,6 +1,7 @@
 use crate::traits::*;
 use crate::utils::str::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 
 pub struct CompactTrie {
     root: Option<Box<TrieNode>>,
@@ -21,14 +22,14 @@ impl CompactTrie {
 impl Trie for CompactTrie {
     fn build(&mut self, v: &Vec<Str>) {
         let mut x = v.to_vec();
-        x.sort();
+        x.sort_by(cmp);
 
         self.root = TrieNode::new(&x, 0, 0, v.len());
     }
 
     fn pred_query(&self, x: &Str) -> Option<Str> {
         if let Some(r) = &self.root {
-            (*r).pred_query(x, &mut Str::new(), &mut false)
+            (*r).pred_query(x, &mut Str::new(0), &mut false)
         } else {
             None
         }
@@ -36,18 +37,18 @@ impl Trie for CompactTrie {
 
     fn succ_query(&self, x: &Str) -> Option<Str> {
         if let Some(r) = &self.root {
-            (*r).succ_query(x, &mut Str::new(), &mut false)
+            (*r).succ_query(x, &mut Str::new(0), &mut false)
         } else {
             None
         }
     }
 
     fn ex_pref_query(&self, x: &Str) -> bool {
-        if let Some(i) = &self.succ_query(x) { i[0..min(i.len(), x.len())] == *x } else { false }
+        if let Some(i) = &self.succ_query(x) { get_substr(i,0,min(i.len(), x.len())) == *x } else { false }
     }
 
     fn ex_range_query(&self, x: &Str, y: &Str) -> bool {
-        if let Some(i) = &self.succ_query(x) { i < y } else { false }
+        if let Some(i) = &self.succ_query(x) { cmp(i,y) == Less } else { false }
     }
 }
 
@@ -59,7 +60,7 @@ impl TrieNode {
         } else if l + 1 == r {
             Some(
                 Box::new(TrieNode {
-                    s: v[l][ind..v[l].len()].to_bitvec(),
+                    s: get_substr(&v[l],ind,v[l].len()),
                     left: None,
                     right: None,
                 })
@@ -73,7 +74,7 @@ impl TrieNode {
             if mid != l && mid != r {
                 Some(
                     Box::new(TrieNode {
-                        s: Str::new(),
+                        s: Str::new(0),
                         left: TrieNode::new(v, ind + 1, l, mid),
                         right: TrieNode::new(v, ind + 1, mid, r),
                     })
@@ -82,7 +83,7 @@ impl TrieNode {
                 let x = TrieNode::new(v, ind + 1, l, r);
                 assert!(x.is_some());
                 let mut res = x.unwrap();
-                (*res).s.insert(0, v[l][ind]);
+                push_front(&mut (*res).s, v[l][ind]);
                 Some(res)
             }
         }
@@ -107,7 +108,7 @@ impl TrieNode {
     fn pred_query(&self, x: &Str, curr: &mut Str, found: &mut bool) -> Option<Str> {
         assert!(!(self.left.is_some() ^ self.right.is_some())); // invariante: ogni nodo ha 0 o 2 figli
         for c in &self.s {
-            if !Self::upd_curr_pred(x, curr, found, *c) {
+            if !Self::upd_curr_pred(x, curr, found, c) {
                 return None;
             }
         }
@@ -167,7 +168,7 @@ impl TrieNode {
     fn succ_query(&self, x: &Str, curr: &mut Str, found: &mut bool) -> Option<Str> {
         assert!(!(self.left.is_some() ^ self.right.is_some())); // invariante: ogni nodo ha 0 o 2 figli
         for c in &self.s {
-            if !Self::upd_curr_succ(x, curr, found, *c) {
+            if !Self::upd_curr_succ(x, curr, found, c) {
                 return None;
             }
         }

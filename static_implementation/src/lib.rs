@@ -17,13 +17,13 @@ pub mod prelude {
 use crate::prelude::*;
 use rand::prelude::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 use std::mem::swap;
 
 #[cfg(test)]
 mod random_tests {
     use crate::*;
 
-    type Ds1 = NaiveTrie;
     type Ds2 = CompactTrie;
     type Ds3 = ZFastTrie<RollingHash>;
     type Ds4 = ZFastTrieSux<RollingHash>;
@@ -103,12 +103,12 @@ mod random_tests {
         test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    //#[test]
+    #[test]
     fn test_z_fast_fixed_small() {
         let t = 1;
         let bits = 40;
-        let n = 1000000;
-        let m = 1;
+        let n = 100000;
+        let m = 10;
         let deb = false;
         let variablelen = false;
         let fixed_seed = true;
@@ -118,12 +118,12 @@ mod random_tests {
         test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
     }
 
-    //#[test]
+    #[test]
     fn test_z_fast_sux_fixed_small() {
         let t = 1;
         let bits = 40;
-        let n = 1000000;
-        let m = 1;
+        let n = 100000;
+        let m = 10;
         let deb = false;
         let variablelen = false;
         let fixed_seed = true;
@@ -135,7 +135,7 @@ mod random_tests {
 }
 
 fn gen_bin_str(rng: &mut SmallRng, n: u32) -> Str {
-    let mut s = Str::new();
+    let mut s = Str::new(0);
     for _ in 0..n {
         s.push(rng.next_u32() % 2 == 0);
     }
@@ -168,7 +168,7 @@ pub fn test<T: Trie>(
             if variablelen {
                 //da ottimizzare
                 for i in &v {
-                    if i[0..min(i.len(), s.len())] == *i || i[0..min(i.len(), s.len())] == s {
+                    if get_substr(i,0,min(i.len(), s.len())) == *i || get_substr(i,0,min(i.len(), s.len())) == s {
                         flag = false;
                         continue;
                     }
@@ -198,7 +198,7 @@ pub fn test<T: Trie>(
                 if variablelen { (rng.next_u32() % ((bits / 4) * 3)) + bits / 4 } else { bits }
             };
             let mut s2 = gen_bin_str(&mut rng, len2);
-            if s1 > s2 {
+            if cmp(&s1,&s2) == Greater {
                 swap(&mut s1, &mut s2);
             }
             if deb {

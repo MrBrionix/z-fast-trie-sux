@@ -1,7 +1,6 @@
 use crate::traits::*;
 use crate::utils::str::*;
 use rand::prelude::*;
-use bitvec::field::BitField;
 
 const DEFAULT_MODULO: usize = 1000000000 + 7;
 const DEFAULT_BASE: usize = 37;
@@ -26,24 +25,23 @@ impl Hash for RollingHash {
 
     fn slow_prefix_hash(&self, s: &Self::DomainType, ind: usize) -> Self::HashType {
         assert!(ind <= s.len());
-
         let mut res: Self::HashType = self.base;
         let mut pot: Self::HashType = (self.base * self.base) % self.modulo;
         let mut currind: usize = 0;
 
-        for x in s.chunks_exact(WORD_SIZE) {
+        for x in s.as_ref() {
             if currind + WORD_SIZE > ind {
                 break;
             }
             currind += WORD_SIZE;
 
-            res += (((x.load::<Self::HashType>() + 1) % self.modulo) * pot) % self.modulo;
+            res += (((x + 1) % self.modulo) * pot) % self.modulo;
             res %= self.modulo;
 
             pot *= self.base;
             pot %= self.modulo;
         }
-
+	
         while currind < ind {
             res += pot;
             res %= self.modulo;
@@ -68,8 +66,8 @@ impl Hash for RollingHash {
         let mut v = vec![res];
         let mut pots = vec![pot];
 
-        for x in s.chunks(WORD_SIZE) {
-            res += ((((x.load::<usize>() as Self::HashType) + 1) % self.modulo) * pot) % self.modulo;
+        for x in s.as_ref() {
+            res += (((x + 1) % self.modulo) * pot) % self.modulo;
             res %= self.modulo;
             v.push(res);
 

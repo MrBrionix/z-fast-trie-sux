@@ -1,5 +1,6 @@
 use rand::prelude::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 use std::mem::swap;
 use z_fast_trie_static_sux::prelude::*;
 
@@ -17,8 +18,8 @@ fn abcd() {
     let deb = true;
     let variablelen = false;
     let fixed_seed = true;
-    let mut ds1: Ds3 = Ds3::new();
-    let mut ds2: Ds4 = Ds4::new();
+    let mut ds1 = Ds1::new();
+    let mut ds2 = Ds4::new();
     crosstest(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds1, &mut ds2);
 }
 
@@ -156,7 +157,7 @@ mod cross_tests {
 }
 
 fn gen_bin_str(rng: &mut SmallRng, n: u32) -> Str {
-    let mut s = Str::new();
+    let mut s = Str::new(0);
     for _ in 0..n {
         s.push(rng.next_u32() % 2 == 0);
     }
@@ -190,7 +191,7 @@ pub fn crosstest<T1: Trie, T2: Trie>(
             if variablelen {
                 //da ottimizzare
                 for i in &v {
-                    if i[0..min(i.len(), s.len())] == *i || i[0..min(i.len(), s.len())] == s {
+                    if get_substr(i,0,min(i.len(), s.len())) == *i || get_substr(i,0,min(i.len(), s.len())) == s {
                         flag = false;
                         continue;
                     }
@@ -201,7 +202,7 @@ pub fn crosstest<T1: Trie, T2: Trie>(
             }
         }
 
-        v.sort();
+        v.sort_by(cmp);
         if deb {
             print!("genero:\n");
             for i in &v {
@@ -221,7 +222,7 @@ pub fn crosstest<T1: Trie, T2: Trie>(
                 if variablelen { (rng.next_u32() % ((bits / 4) * 3)) + bits / 4 } else { bits }
             };
             let mut s2 = gen_bin_str(&mut rng, len2);
-            if s1 > s2 {
+            if cmp(&s1,&s2) == Greater {
                 swap(&mut s1, &mut s2);
             }
             if deb {

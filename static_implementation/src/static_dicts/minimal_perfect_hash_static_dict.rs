@@ -1,9 +1,9 @@
-use bitvec::prelude::*;
 use crate::traits::*;
 use crate::rank_structures::*;
 use std::cmp::max;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use sux::prelude::*;
 
 type RankDS = JacobsonRank;
 const GAMMA: f64 = 1.23;
@@ -12,8 +12,8 @@ pub struct MinimalPerfectHashStaticDict<K, V, H: ParametricHash<DomainType = K>>
     size: usize,
     h: [H; 3],
     table: Vec<V>,
-    w0: BitVec<u32>,
-    w1: BitVec<u32>,
+    w0: BitVec<Vec<usize>>,
+    w1: BitVec<Vec<usize>>,
     ds: RankDS,
 }
 
@@ -26,14 +26,14 @@ for MinimalPerfectHashStaticDict<K, V, H> {
             size: 0,
             h: [H::new(), H::new(), H::new()],
             table: vec![],
-            w0: BitVec::new(),
-            w1: BitVec::new(),
+            w0: BitVec::new(0),
+            w1: BitVec::new(0),
             ds: RankDS::new(),
         }
     }
 
     fn build(&mut self, keys: &Vec<K>, values: &Vec<V>) {
-        assert!(keys.len() == values.len());
+        assert!(keys.len() == values.len());        
         self.size = (GAMMA * (keys.len() as f64)) as usize;
         let n = max(self.size, 101);
 

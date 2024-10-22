@@ -1,4 +1,3 @@
-use bitvec::field::BitField;
 use crate::traits::*;
 use crate::utils::str::*;
 use std::cmp::min;
@@ -36,7 +35,12 @@ impl RankStructure for JacobsonRank {
     }
 
     fn build(&mut self, v0: &Str, v1: &Str) {
-        let sequence = v0.clone() | v1.clone();
+        assert!(v0.len()==v1.len());
+        let mut sequence : Str = Str::new(0);
+        for i in 0..v0.len() {
+            sequence.push(v0[i]|v1[i]);
+        }
+
         self.n = sequence.len() + 1;
         self.block_dim = (0.5 * (self.n as f64).log2()).ceil() as usize;
         self.super_block_dim = ((self.n as f64).log2() * (self.n as f64).log2()).ceil() as usize;
@@ -49,7 +53,7 @@ impl RankStructure for JacobsonRank {
         let mut t = vec![];
         let mut curr_t = 0;
         let mut tmp = vec![];
-        for x in sequence {
+        for x in &sequence {
             t.push(curr_t);
             if x {
                 curr_t += 1;
@@ -115,6 +119,13 @@ impl JacobsonRank {
         ranklist
     }
     fn get_index(l: usize, r: usize, v0: &Str, v1: &Str) -> usize {
-        v0[l..min(r, v0.len())].load::<usize>() | v1[l..min(r, v0.len())].load::<usize>()
+        let mut res : usize = 0;
+        for i in (l..min(r, v0.len())).rev() {
+            res *= 2;
+            if v0[i] | v1[i] {
+                res += 1;
+            }
+        }
+        res
     }
 }

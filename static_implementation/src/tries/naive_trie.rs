@@ -1,6 +1,7 @@
 use crate::traits::*;
 use crate::utils::str::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 
 pub struct NaiveTrie {
     v: Vec<Str>,
@@ -15,13 +16,13 @@ impl NaiveTrie {
 impl Trie for NaiveTrie {
     fn build(&mut self, v: &Vec<Str>) {
         self.v = v.to_vec();
-        self.v.sort();
+        self.v.sort_by(cmp);
     }
 
     fn pred_query(&self, x: &Str) -> Option<Str> {
         let mut res = None;
         for i in &self.v {
-            if i < x {
+            if cmp(i,x) == Less {
                 res = Some(i);
             } else {
                 break;
@@ -33,7 +34,7 @@ impl Trie for NaiveTrie {
     fn succ_query(&self, x: &Str) -> Option<Str> {
         let mut res = None;
         for i in &self.v {
-            if i >= x {
+            if cmp(i,x) != Less {
                 res = Some(i);
                 break;
             }
@@ -42,10 +43,10 @@ impl Trie for NaiveTrie {
     }
 
     fn ex_pref_query(&self, x: &Str) -> bool {
-        if let Some(i) = &self.succ_query(x) { i[0..min(i.len(), x.len())] == *x } else { false }
+        if let Some(i) = &self.succ_query(x) { get_substr(i,0,min(i.len(), x.len())) == *x } else { false }
     }
 
     fn ex_range_query(&self, x: &Str, y: &Str) -> bool {
-        if let Some(i) = &self.succ_query(x) { i < y } else { false }
+        if let Some(i) = &self.succ_query(x) { cmp(i,y) == Less } else { false }
     }
 }

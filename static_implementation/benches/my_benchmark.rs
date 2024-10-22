@@ -1,12 +1,12 @@
 use rand::prelude::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 use std::mem::swap;
 
 use z_fast_trie_static_sux::prelude::*;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use criterion::BenchmarkId;
 
-type Ds1 = NaiveTrie;
 type Ds2 = CompactTrie;
 type Ds3 = ZFastTrie<RollingHash>;
 type Ds4 = ZFastTrieSux<RollingHash>;
@@ -81,40 +81,37 @@ pub fn bench_z_fast_sux_variable(c: &mut Criterion) {
     bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_sux_variable");
 }
 
-/*
-//#[test]
-fn test_z_fast_fixed_small() {
+pub fn bench_z_fast_fixed_small(c: &mut Criterion) {
     let t = 1;
     let bits = 40;
-    let n = 1000000;
-    let m = 1;
+    let n = 100000;
+    let m = 10;
     let deb = false;
     let variablelen = false;
     let fixed_seed = true;
 
     let mut ds: Ds3 = Ds3::new();
 
-    test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
+    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_fixed_small");
 }
 
-//#[test]
-fn test_z_fast_sux_fixed_small() {
+fn bench_z_fast_sux_fixed_small(c: &mut Criterion) {
     let t = 1;
     let bits = 40;
-    let n = 1000000;
-    let m = 1;
+    let n = 100000;
+    let m = 10;
     let deb = false;
     let variablelen = false;
     let fixed_seed = true;
 
     let mut ds: Ds4 = Ds4::new();
 
-    test(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds);
+    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_sux_fixed_small");
 }
-*/
+
 
 fn gen_bin_str(rng: &mut SmallRng, n: u32) -> Str {
-    let mut s = Str::new();
+    let mut s = Str::new(0);
     for _ in 0..n {
         s.push(rng.next_u32() % 2 == 0);
     }
@@ -149,7 +146,7 @@ pub fn bench<T: Trie>(
             if variablelen {
                 //da ottimizzare
                 for i in &v {
-                    if i[0..min(i.len(), s.len())] == *i || i[0..min(i.len(), s.len())] == s {
+                    if get_substr(i,0,min(i.len(), s.len())) == *i || get_substr(i,0,min(i.len(), s.len())) == s {
                         flag = false;
                         continue;
                     }
@@ -172,7 +169,7 @@ pub fn bench<T: Trie>(
         
 
         let mut group = c.benchmark_group(name);
-        for i in 0..m {
+        for _i in 0..m {
             let len = {
                 if variablelen { (rng.next_u32() % ((bits / 4) * 3)) + bits / 4 } else { bits }
             };
@@ -181,14 +178,14 @@ pub fn bench<T: Trie>(
                 if variablelen { (rng.next_u32() % ((bits / 4) * 3)) + bits / 4 } else { bits }
             };
             let mut s2 = gen_bin_str(&mut rng, len2);
-            if s1 > s2 {
+            if cmp(&s1,&s2) == Greater {
                 swap(&mut s1, &mut s2);
             }
             if deb {
                 print!("query: {} & {}\n", s1, s2);
             }
 
-            group.bench_with_input(BenchmarkId::from_parameter(&s1[0..min(20,s1.len())]), &s1, |b, s1| b.iter(|| ds.pred_query(&s1)));
+            group.bench_with_input(BenchmarkId::from_parameter(&get_substr(&s1,0,min(20,s1.len()))), &s1, |b, s1| b.iter(|| ds.pred_query(&s1)));
             //c.bench_function(name,|b| b.iter(|| ds.pred_query(&s1)));
             
             /*let pred = ds.pred_query(&s1);
@@ -221,10 +218,12 @@ pub fn bench<T: Trie>(
 
 criterion_group!(benches,
 bench_compact_fixed,
-//bench_z_fast_fixed,
-//bench_z_fast_variable,
-//bench_z_fast_sux_fixed,
-//bench_z_fast_sux_variable
+bench_z_fast_fixed,
+bench_z_fast_variable,
+bench_z_fast_sux_fixed,
+bench_z_fast_sux_variable,
+bench_z_fast_fixed_small,
+bench_z_fast_sux_fixed_small
 );
 criterion_main!(benches);
 

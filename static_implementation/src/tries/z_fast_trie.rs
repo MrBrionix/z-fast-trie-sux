@@ -1,6 +1,7 @@
 use crate::traits::*;
 use crate::utils::*;
 use std::cmp::min;
+use std::cmp::Ordering::*;
 use std::collections::HashMap;
 
 pub struct ZFastTrie<H: Hash<DomainType = Str>> {
@@ -22,7 +23,7 @@ struct TrieNode {
 impl<H: Hash<DomainType = Str>> Trie for ZFastTrie<H> {
     fn build(&mut self, v: &Vec<Str>) {
         let mut x = v.to_vec();
-        x.sort();
+        x.sort_by(cmp);
         self.z_map = HashMap::new();
         self.root = ZFastTrie::<H>::build_tree(&x, 0, 0, v.len(), &mut None).0;
         if let Some(r) = &self.root {
@@ -41,7 +42,7 @@ impl<H: Hash<DomainType = Str>> Trie for ZFastTrie<H> {
 
     fn ex_pref_query(&self, x: &Str) -> bool {
         if let Some(i) = &self.pref_query(x) {
-            i.len() == x.len() && i[0..min(i.len(), x.len())] == *x
+            i.len() == x.len() && get_substr(i,0,min(i.len(), x.len())) == *x
         } else {
             false
         }
@@ -189,7 +190,7 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
                     if
                         extent.len() < x.len() &&
                         get_fattest(rind, lind) == f &&
-                        extent == x[0..extent.len()]
+                        extent == get_substr(x,0,extent.len())
                     {
                         a = rind + 1;
                         res = Some(node_ref.clone());
@@ -218,11 +219,11 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
             if res.is_some() {
                 res.as_ref().unwrap().borrow().get_handle().unwrap()
             } else {
-                Str::new()
+                Str::new(0)
             }
         };
 
-        if handle != x[0..min(x.len(), handle.len())] {
+        if handle != get_substr(x,0,min(x.len(), handle.len())) {
             res = self.locate_parex(x);
         }
         res
@@ -237,7 +238,7 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
             let node = node_ref.borrow();
             let extent = node.get_extent();
 
-            if extent.len() < x.len() && extent == x[0..min(extent.len(), x.len())] {
+            if extent.len() < x.len() && extent == get_substr(x,0,min(extent.len(), x.len())) {
                 if !x[extent.len()] {
                     assert!(node.left.is_some());
                     Some(copy_ptr(&node.left.as_ref().unwrap()))
@@ -276,7 +277,7 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
             let (mut prev, mut succ) = (None, None);
 
             let leaf;
-            if *x <= eta.borrow().get_extent() {
+            if cmp(x , &eta.borrow().get_extent()) != Greater {
                 leaf = eta.borrow().get_leftmost(eta.clone());
                 succ = Some(leaf.borrow().get_extent());
 
@@ -310,7 +311,7 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
         if x == y {
             false
         } else if let Some(mut alpha) = self.locate_exit(x) {
-            if *x <= alpha.borrow().get_extent() {
+            if cmp(x,&alpha.borrow().get_extent()) != Greater {
                 while
                     alpha.borrow().to_leaf.is_some() &&
                     alpha.borrow().get_extent().len() < y.len()
@@ -318,16 +319,16 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
                     let tmp = alpha.borrow().jump_left.clone().unwrap();
                     alpha = tmp;
                 }
-                return alpha.borrow().get_extent() < *y;
+                return cmp(&alpha.borrow().get_extent(),y) == Less;
             }
 
             let mut beta = self.locate_exit(y).unwrap();
-            if *x > beta.borrow().get_extent() {
+            if cmp(x,&beta.borrow().get_extent()) == Greater {
                 while beta.borrow().to_leaf.is_some() && beta.borrow().get_extent().len() < x.len() {
                     let tmp = beta.borrow().jump_right.clone().unwrap();
                     beta = tmp;
                 }
-                return *x <= beta.borrow().get_extent();
+                return cmp(x,&beta.borrow().get_extent()) != Greater;
             }
 
             let z = lcp(x, y);
@@ -338,7 +339,7 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
                 let tmp = alpha.borrow().jump_right.clone().unwrap();
                 alpha = tmp;
             }
-            if *x <= alpha.borrow().get_extent() {
+            if cmp(x,&alpha.borrow().get_extent()) != Greater {
                 return true;
             }
 
@@ -349,7 +350,7 @@ impl<H: Hash<DomainType = Str>> ZFastTrie<H> {
             }
 
             let candidate = beta.borrow().get_extent();
-            candidate < *y
+            cmp(&candidate,y) == Less
         } else {
             false
         }
@@ -396,10 +397,10 @@ impl TrieNode {
 
         if let Some(p) = &self.to_leaf {
             assert!(p.borrow().extent.is_some());
-            p.borrow().extent.as_ref().unwrap()[0..rind].to_bitvec()
+            get_substr(p.borrow().extent.as_ref().unwrap(),0,rind)
         } else {
             assert!(self.extent.is_some());
-            self.extent.as_ref().unwrap()[0..rind].to_bitvec()
+            get_substr(self.extent.as_ref().unwrap(),0,rind)
         }
     }
 
@@ -408,12 +409,12 @@ impl TrieNode {
 
         if let Some(p) = &self.to_leaf {
             assert!(p.borrow().extent.is_some());
-            let s = p.borrow().extent.as_ref().unwrap().clone();
-            s[0..rind].to_bitvec()
+            let s = get_substr(p.borrow().extent.as_ref().unwrap(),0,rind);
+            s
         } else {
             assert!(self.extent.is_some());
-            let s = self.extent.as_ref().unwrap();
-            s[0..rind].to_bitvec()
+            let s = get_substr(self.extent.as_ref().unwrap(),0,rind);
+            s
         }
     }
 
@@ -468,7 +469,7 @@ impl TrieNode {
         let rind = self.get_rind();
         if let Some(p) = &self.to_leaf {
             if let Some(s) = &p.borrow().extent {
-                Some(s[0..get_fattest(rind, self.lind)].to_bitvec())
+                Some(get_substr(s,0,get_fattest(rind, self.lind)))
             } else {
                 None
             }
