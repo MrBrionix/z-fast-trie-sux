@@ -1,17 +1,15 @@
+use criterion::{BenchmarkId, criterion_group, criterion_main, Criterion};
 use rand::prelude::*;
 use std::cmp::min;
 use std::cmp::Ordering::*;
 use std::mem::swap;
-
 use z_fast_trie_static_sux::prelude::*;
-use criterion::{criterion_group, criterion_main, Criterion};
-use criterion::BenchmarkId;
 
 type Ds2 = CompactTrie;
 type Ds3 = ZFastTrie<RollingHash>;
 type Ds4 = ZFastTrieSux<RollingHash>;
 
-pub fn bench_compact_fixed(c: &mut Criterion) {
+pub fn global_bench_compact_fixed(c: &mut Criterion) {
     let t = 1;
     let bits = 10000;
     let n = 5000;
@@ -22,10 +20,10 @@ pub fn bench_compact_fixed(c: &mut Criterion) {
 
     let mut ds: Ds2 = Ds2::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_compact_fixed");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_compact_fixed");
 }
 
-pub fn bench_z_fast_fixed(c: &mut Criterion) {
+pub fn global_bench_z_fast_fixed(c: &mut Criterion) {
     let t = 1;
     let bits = 10000;
     let n = 5000;
@@ -36,10 +34,10 @@ pub fn bench_z_fast_fixed(c: &mut Criterion) {
 
     let mut ds: Ds3 = Ds3::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_fixed");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_fixed");
 }
 
-pub fn bench_z_fast_variable(c: &mut Criterion) {
+pub fn global_bench_z_fast_variable(c: &mut Criterion) {
     let t = 1;
     let bits = 10000;
     let n = 5000;
@@ -50,10 +48,10 @@ pub fn bench_z_fast_variable(c: &mut Criterion) {
 
     let mut ds: Ds3 = Ds3::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_variable");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_variable");
 }
 
-pub fn bench_z_fast_sux_fixed(c: &mut Criterion) {
+pub fn global_bench_z_fast_sux_fixed(c: &mut Criterion) {
     let t = 1;
     let bits = 10000;
     let n = 5000;
@@ -64,10 +62,10 @@ pub fn bench_z_fast_sux_fixed(c: &mut Criterion) {
 
     let mut ds: Ds4 = Ds4::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_sux_fixed");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_sux_fixed");
 }
 
-pub fn bench_z_fast_sux_variable(c: &mut Criterion) {
+pub fn global_bench_z_fast_sux_variable(c: &mut Criterion) {
     let t = 1;
     let bits = 10000;
     let n = 5000;
@@ -78,10 +76,10 @@ pub fn bench_z_fast_sux_variable(c: &mut Criterion) {
 
     let mut ds: Ds4 = Ds4::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_sux_variable");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_sux_variable");
 }
 
-pub fn bench_z_fast_fixed_small(c: &mut Criterion) {
+pub fn global_bench_z_fast_fixed_small(c: &mut Criterion) {
     let t = 1;
     let bits = 40;
     let n = 100000;
@@ -92,10 +90,10 @@ pub fn bench_z_fast_fixed_small(c: &mut Criterion) {
 
     let mut ds: Ds3 = Ds3::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_fixed_small");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_fixed_small");
 }
 
-fn bench_z_fast_sux_fixed_small(c: &mut Criterion) {
+fn global_bench_z_fast_sux_fixed_small(c: &mut Criterion) {
     let t = 1;
     let bits = 40;
     let n = 100000;
@@ -106,7 +104,7 @@ fn bench_z_fast_sux_fixed_small(c: &mut Criterion) {
 
     let mut ds: Ds4 = Ds4::new();
 
-    bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"bench_z_fast_sux_fixed_small");
+    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_sux_fixed_small");
 }
 
 
@@ -118,7 +116,7 @@ fn gen_bin_str(rng: &mut SmallRng, n: u32) -> Str {
     s
 }
 
-pub fn bench<T: Trie>(
+pub fn global_bench<T: Trie>(
     t: u32,
     bits: u32,
     n: u32,
@@ -167,8 +165,7 @@ pub fn bench<T: Trie>(
         
         ds.build(&v);
         
-
-        let mut group = c.benchmark_group(name);
+        let mut queries = vec![];
         for _i in 0..m {
             let len = {
                 if variablelen { (rng.next_u32() % ((bits / 4) * 3)) + bits / 4 } else { bits }
@@ -184,9 +181,7 @@ pub fn bench<T: Trie>(
             if deb {
                 print!("query: {} & {}\n", s1, s2);
             }
-
-            group.bench_with_input(BenchmarkId::from_parameter(&get_substr(&s1,0,min(20,s1.len()))), &s1, |b, s1| b.iter(|| ds.pred_query(&s1)));
-            //c.bench_function(name,|b| b.iter(|| ds.pred_query(&s1)));
+            queries.push(s1);
             
             /*let pred = ds.pred_query(&s1);
             if deb {
@@ -212,18 +207,22 @@ pub fn bench<T: Trie>(
                 print!("------------\n");
             }*/
         }
-        group.finish();
+        c.bench_with_input(BenchmarkId::new(name,"default"), &queries, |b, queries| b.iter(|| {
+            for i in queries {
+                ds.pred_query(&i);
+            }
+        }));
     }
 }
 
 criterion_group!(benches,
-bench_compact_fixed,
-bench_z_fast_fixed,
-bench_z_fast_variable,
-bench_z_fast_sux_fixed,
-bench_z_fast_sux_variable,
-bench_z_fast_fixed_small,
-bench_z_fast_sux_fixed_small
+global_bench_compact_fixed,
+global_bench_z_fast_fixed,
+global_bench_z_fast_variable,
+global_bench_z_fast_sux_fixed,
+global_bench_z_fast_sux_variable,
+global_bench_z_fast_fixed_small,
+global_bench_z_fast_sux_fixed_small
 );
 criterion_main!(benches);
 
