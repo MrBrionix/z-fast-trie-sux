@@ -81,8 +81,8 @@ pub fn global_bench_z_fast_sux_variable(c: &mut Criterion) {
 
 pub fn global_bench_z_fast_fixed_small(c: &mut Criterion) {
     let t = 1;
-    let bits = 40;
-    let n = 100000;
+    let bits = 63;
+    let n = 1000000;
     let m = 10;
     let deb = false;
     let variablelen = false;
@@ -95,8 +95,8 @@ pub fn global_bench_z_fast_fixed_small(c: &mut Criterion) {
 
 fn global_bench_z_fast_sux_fixed_small(c: &mut Criterion) {
     let t = 1;
-    let bits = 40;
-    let n = 100000;
+    let bits = 63;
+    let n = 1000000;
     let m = 10;
     let deb = false;
     let variablelen = false;
@@ -166,6 +166,8 @@ pub fn global_bench<T: Trie>(
         ds.build(&v);
         
         let mut queries = vec![];
+        let mut queries2 = vec![];
+        let mut group = c.benchmark_group(name);
         for _i in 0..m {
             let len = {
                 if variablelen { (rng.next_u32() % ((bits / 4) * 3)) + bits / 4 } else { bits }
@@ -181,37 +183,25 @@ pub fn global_bench<T: Trie>(
             if deb {
                 print!("query: {} & {}\n", s1, s2);
             }
-            queries.push(s1);
-            
-            /*let pred = ds.pred_query(&s1);
-            if deb {
-                if let Some(t) = pred {
-                    print!("pred: {}\n", t);
-                } else {
-                    print!("non ha predecessori\n");
-                }
-            }
-
-            let succ = ds.succ_query(&s1);
-            if deb {
-                if let Some(t) = succ {
-                    print!("succ: {}\n", t);
-                } else {
-                    print!("non ha successori\n");
-                }
-            }
-
-            let flag = ds.ex_range_query(&s1, &s2);
-            if deb {
-                print!("range query: {}\n", flag);
-                print!("------------\n");
-            }*/
+            queries.push(s1.clone());
+            queries2.push((s1.clone(),s2.clone()));
         }
-        c.bench_with_input(BenchmarkId::new(name,"default"), &queries, |b, queries| b.iter(|| {
+        group.bench_with_input(BenchmarkId::from_parameter("pred_queries"), &queries, |b, queries| b.iter(|| {
             for i in queries {
                 ds.pred_query(&i);
             }
         }));
+        group.bench_with_input(BenchmarkId::from_parameter("succ_queries"), &queries, |b, queries| b.iter(|| {
+            for i in queries {
+                ds.succ_query(&i);
+            }
+        }));
+        group.bench_with_input(BenchmarkId::from_parameter("ex_range_queries"), &queries2, |b, queries2| b.iter(|| {
+            for (i,j) in queries2 {
+                ds.ex_range_query(&i,&j);
+            }
+        }));
+        group.finish();
     }
 }
 
