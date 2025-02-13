@@ -116,7 +116,7 @@ impl ParametricHash for RollingHash {
     }
 
     fn new_random(domain_size: usize) -> Self {
-        let num = ((SmallRng::from_rng(thread_rng()).next_u32() as usize) % (domain_size - 1)) + 1;
+        let num = ((SmallRng::seed_from_u64(0).next_u32() as usize) % (domain_size - 1)) + 1;
         RollingHash {
             base: RollingHash::get_coprime(num, domain_size),
             modulo: domain_size,

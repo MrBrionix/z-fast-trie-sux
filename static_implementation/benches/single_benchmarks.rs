@@ -129,7 +129,7 @@ pub fn single_bench<T: Trie>(
     name: &str
 ) {
     let mut rng = {
-        if fixed_seed { SmallRng::seed_from_u64(0) } else { SmallRng::from_rng(thread_rng()) }
+        if fixed_seed { SmallRng::seed_from_u64(0) } else { SmallRng::seed_from_u64(0) }
     };
 
     for _ in 0..t {

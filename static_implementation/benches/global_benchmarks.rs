@@ -18,9 +18,14 @@ pub fn global_bench_compact_fixed(c: &mut Criterion) {
     let variablelen = false;
     let fixed_seed = true;
 
-    let mut ds: Ds2 = Ds2::new();
 
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_compact_fixed");
+    
+    let mut x = 100;
+    while x <= n { 
+        let mut ds: Ds2 = Ds2::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_compact_fixed_".to_owned()+&x.to_string()));
+        x += 100;
+    }
 }
 
 pub fn global_bench_z_fast_fixed(c: &mut Criterion) {
@@ -32,9 +37,12 @@ pub fn global_bench_z_fast_fixed(c: &mut Criterion) {
     let variablelen = false;
     let fixed_seed = true;
 
-    let mut ds: Ds3 = Ds3::new();
-
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_fixed");
+    let mut x = 100;
+    while x <= n { 
+        let mut ds: Ds3 = Ds3::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_z_fast_fixed_".to_owned()+&x.to_string()));
+        x += 100;
+    }
 }
 
 pub fn global_bench_z_fast_variable(c: &mut Criterion) {
@@ -46,9 +54,12 @@ pub fn global_bench_z_fast_variable(c: &mut Criterion) {
     let variablelen = true;
     let fixed_seed = true;
 
-    let mut ds: Ds3 = Ds3::new();
-
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_variable");
+    let mut x = 100;
+    while x <= n { 
+        let mut ds: Ds3 = Ds3::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_z_fast_variable_".to_owned()+&x.to_string()));
+        x += 100;
+    }
 }
 
 pub fn global_bench_z_fast_sux_fixed(c: &mut Criterion) {
@@ -60,9 +71,12 @@ pub fn global_bench_z_fast_sux_fixed(c: &mut Criterion) {
     let variablelen = false;
     let fixed_seed = true;
 
-    let mut ds: Ds4 = Ds4::new();
-
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_sux_fixed");
+    let mut x = 100;
+    while x <= n { 
+        let mut ds: Ds4 = Ds4::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_z_fast_sux_fixed_".to_owned()+&x.to_string()));
+        x += 100;
+    }
 }
 
 pub fn global_bench_z_fast_sux_variable(c: &mut Criterion) {
@@ -74,9 +88,12 @@ pub fn global_bench_z_fast_sux_variable(c: &mut Criterion) {
     let variablelen = true;
     let fixed_seed = true;
 
-    let mut ds: Ds4 = Ds4::new();
-
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_sux_variable");
+    let mut x = 100;
+    while x <= n { 
+        let mut ds: Ds4 = Ds4::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_z_fast_sux_variable_".to_owned()+&x.to_string()));
+        x += 100;
+    }
 }
 
 pub fn global_bench_z_fast_fixed_small(c: &mut Criterion) {
@@ -88,9 +105,12 @@ pub fn global_bench_z_fast_fixed_small(c: &mut Criterion) {
     let variablelen = false;
     let fixed_seed = true;
 
-    let mut ds: Ds3 = Ds3::new();
-
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_fixed_small");
+    let mut x = 20000;
+    while x <= n { 
+        let mut ds: Ds3 = Ds3::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_z_fast_fixed_small_".to_owned()+&x.to_string()));
+        x += 20000;
+    }
 }
 
 fn global_bench_z_fast_sux_fixed_small(c: &mut Criterion) {
@@ -102,9 +122,12 @@ fn global_bench_z_fast_sux_fixed_small(c: &mut Criterion) {
     let variablelen = false;
     let fixed_seed = true;
 
-    let mut ds: Ds4 = Ds4::new();
-
-    global_bench(t, bits, n, m, deb, variablelen, fixed_seed, &mut ds, c, &"global_bench_z_fast_sux_fixed_small");
+    let mut x = 20000;
+    while x <= n { 
+        let mut ds: Ds4 = Ds4::new();
+        global_bench(t, bits, x, m, deb, variablelen, fixed_seed, &mut ds, c, &("global_bench_z_fast_sux_fixed_small_".to_owned()+&x.to_string()));
+        x += 20000;
+    }
 }
 
 
@@ -129,7 +152,7 @@ pub fn global_bench<T: Trie>(
     name: &str
 ) {
     let mut rng = {
-        if fixed_seed { SmallRng::seed_from_u64(0) } else { SmallRng::from_rng(thread_rng()) }
+        if fixed_seed { SmallRng::seed_from_u64(0) } else { SmallRng::seed_from_u64(0) }
     };
 
     for _ in 0..t {
